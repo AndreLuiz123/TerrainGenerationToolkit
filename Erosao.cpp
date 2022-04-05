@@ -38,8 +38,15 @@ void Erosao::inicializaSedimentoSuspenso(){
          sedimento_suspenso0[IXT(i,j)] = 0;
          sedimento_suspenso[IXT(i,j)] = 0;
      }*/
-     sedimento_suspenso0 = vector<float>(N*N);
-     sedimento_suspenso = vector<float>(N*N);
+     sedimento_suspenso0 = vector<float>(N*N,0);
+     sedimento_suspenso = vector<float>(N*N,0);
+
+    /* for(int i=N/2-N/8; i<N/2+N/8; i++)
+     for(int j=N/2-N/8; j<N/2+N/8; j++)
+     {
+         sedimento_suspenso0[IXT(i,j)] = 50;
+         sedimento_suspenso[IXT(i,j)] = 50;
+     }*/
 }
 
 normalize(Vetor *vec){
@@ -59,15 +66,29 @@ float dot(Vetor vec1, Vetor vec2){
     return prodEsc/prodModulos;
 }
 
-void Erosao::roda_erosao(){
+void Erosao::roda_erosao(bool evapo){
+
+    //cout<<"Deposita Dissolve: "<<endl<<sedimento_suspenso[IXT(N/2,N/2)]<<" "<<agua->alturaAgua[IXT(N/2,N/2)].y<<endl;
+    //cout<<"Transporta Sedimento: "<<endl<<sedimento_suspenso0[IXT(N/2+N/8+1,N/2)]<<" "<<agua->u[IXT(N/2,N/2)]<<endl;
     agua->shallowWaterStep();
     deposita_dissolve();
     sedimento_suspenso.swap(sedimento_suspenso0);
     transportaSedimento();
-    sedimento_suspenso.swap(sedimento_suspenso0);
     guardaGradeSedimentoSuspenso();
+    sedimento_suspenso.swap(sedimento_suspenso0);
     thermalErosion();
-    //transportaSedimento2();
+    if(evapo) agua->waterEvaporation();
+}
+
+void Erosao::roda_erosao_hidraulica(bool evapo){
+    agua->shallowWaterStep();
+    deposita_dissolve();
+    sedimento_suspenso.swap(sedimento_suspenso0);
+    transportaSedimento();
+    guardaGradeSedimentoSuspenso();
+    sedimento_suspenso.swap(sedimento_suspenso0);
+    //guardaGradeSedimentoSuspenso();
+    if(evapo)
     agua->waterEvaporation();
 }
 
@@ -87,14 +108,15 @@ void Erosao::desenha_sedimento(){
     for(int i=0; i<N; i++)
     for(int j=0; j<N; j++)
     {
-        if(sedimento_suspenso[IX(i,j)]>1000)
+        if(sedimento_suspenso[IXT(i,j)]>1000)
         {
             //cout<<"IX("<<i<<","<<j<<"): "<<sedimento_suspenso[IX(i,j)]<<endl;
             break;
         }
-        if(sedimento_suspenso[IX(i,j)]>0)
+        if(sedimento_suspenso[IXT(i,j)]>0)
         {
-            glColor3f(0.5,sedimento_suspenso[IX(i,j)],sedimento_suspenso[IX(i,j)]);
+            alturaDesenhada = terreno->alturas[IXT(i,j)].y + 0.5;
+            glColor3f(0.5,sedimento_suspenso[IXT(i,j)],sedimento_suspenso[IXT(i,j)]);
             glNormal3f(0,1,0);
             glVertex3f(float(i*(10.0f/float(N))) - 5.0f-dim/2,alturaDesenhada,float(j*(10.0f/float(N))) - 5.0f+dim/2);
             glVertex3f(float(i*(10.0f/float(N))) - 5.0f-dim/2,alturaDesenhada,float(j*(10.0f/float(N))) - 5.0f-dim/2);
@@ -108,68 +130,69 @@ void Erosao::desenha_sedimento(){
 
 void Erosao::deposita_dissolve(){
 
+    //cout<<"Deposita dissolve"<<sedimento_suspenso[IXT(N/2,N/2)]<<" "<<agua->alturaAgua[IXT(N/2,N/2)].y<<endl;
     float uV;
     float vV;
 
-    for(int i=1; i<N-1; i++)
-    for(int j=1; j<N-1; j++)
+    for(int i=1; i<N; i++)
+    for(int j=1; j<N; j++)
     {
        uV = agua->u[IXT(i,j)];
        vV = agua->v[IXT(i,j)];
 
-        Vetor normal;
+       float b[4];
+        b[0] = terreno->alturas[IXT(i,j)].y - terreno->alturas[IXT(i+1,j)].y;
+        b[1] = terreno->alturas[IXT(i,j)].y - terreno->alturas[IXT(i-1,j)].y;
+        b[2] = terreno->alturas[IXT(i,j)].y - terreno->alturas[IXT(i,j+1)].y;
+        b[3] = terreno->alturas[IXT(i,j)].y - terreno->alturas[IXT(i,j-1)].y;
+
+        float localTiltY = max(max(b[0],b[1]),max(b[2],b[3]));
+        float localTiltX = (10.0/float(N));
+        float sinAlpha = localTiltY/(sqrt(localTiltY*localTiltY + localTiltX*localTiltX));/**/
+
+        /*Vetor normal;
         //if(i-1>0 || i+1<N-1)
-        normal.x = terreno->alturas[IXT(i+1,j)].x - terreno->alturas[IXT(i-1,j)].x;
+        normal.x = terreno->alturas[IXT(i+1,j)].y - terreno->alturas[IXT(i-1,j)].y;
+
+        //float xY = terreno->alturas[IXT(i+1,j)].y - terreno->alturas[IXT(i-1,j)].y;
+        //float zY = terreno->alturas[IXT(i,j+1)].y - terreno->alturas[IXT(i,j-1)].y;
+
         normal.y = 1;
         //if(j-1>0 || j+1<N-1)
-        normal.z = terreno->alturas[IXT(i,j+1)].z - terreno->alturas[IXT(i,j-1)].z;
+        normal.z = terreno->alturas[IXT(i,j+1)].y - terreno->alturas[IXT(i,j-1)].y;
         normalize(&normal);
         Vetor up;
         up.x=0;
         up.y=1;
         up.z=0;
-        float cosa = dot(normal,up);
-        float sinAlpha = sqrt(1 - cosa*cosa);//sin(acos(cosa));
+        float cosa = dot(normal,up);/**/
+        ///float sinAlpha = sqrt(1 - cosa*cosa);//sin(acos(cosa));/**/
         sinAlpha = std::max(sinAlpha,0.1f);
-        sinAlpha = std::max(sinAlpha,0.1f);
+        //sinAlpha = std::max(sinAlpha,0.1f);
 
-        float C = kc*cosa*sqrtf(uV*uV+vV*vV);
 
-        //if(sedimento_suspenso[IXT(i,j)]!=0)
-        //cout<<C<<"|"<<sedimento_suspenso[IXT(i,j)]<<"|"<<sqrtf(uV*uV+vV*vV)<<endl;
+        float C= kc*sinAlpha*sqrtf((uV*uV)+(vV*vV));
 
-        /*if(C>=sedimento_suspenso[IXT(i,j)]){
-            dissolveSedimento(i,j,C - sedimento_suspenso[IXT(i,j)]);
-            //depositaSedimento(i,j,sedimento_suspenso[IXT(i,j)] - C);
-        }else if(C<sedimento_suspenso[IXT(i,j)]){
-            //cout<<C<<" "<<sedimento_suspenso[IXT(i,j)]<<endl;
-            depositaSedimento(i,j,sedimento_suspenso[IXT(i,j)] - C);
-        }*/
-
-        if(C<=sedimento_suspenso[IXT(i,j)]){
-            //dissolveSedimento(i,j,C - sedimento_suspenso[IXT(i,j)]);
-            depositaSedimento(i,j,sedimento_suspenso[IXT(i,j)] - C);
-            //if(C<sedimento_suspenso[IXT(i,j)])
-            //cout<<"oi"<<endl;
-        }else if(C>sedimento_suspenso[IXT(i,j)]){
-            //cout<<C<<" "<<sedimento_suspenso[IXT(i,j)]<<endl;
-            //depositaSedimento(i,j,sedimento_suspenso[IXT(i,j)] - C);
-            dissolveSedimento(i,j,C - sedimento_suspenso[IXT(i,j)]);
-            //cout<<"oi2"<<endl;
+        if(agua->alturaAgua[IXT(i,j)].y>0)
+        {
+            if(C<=sedimento_suspenso[IXT(i,j)]){
+                depositaSedimento(i,j,sedimento_suspenso[IXT(i,j)] - C);
+            }else {
+                dissolveSedimento(i,j,C - sedimento_suspenso[IXT(i,j)]);
+            }
+        }else{
+            depositaSedimento(i,j,sedimento_suspenso[IXT(i,j)]);
         }
-        //depositaSedimento(i,j,C - sedimento_suspenso[IXT(i,j)]);
-        //dissolveSedimento(i,j,C - sedimento_suspenso[IXT(i,j)]);
-
-    }
+        }
 }
 
 void Erosao::dissolveSedimento(int i,int j, float ds){
 
+    //cout<<ds<<endl;
     if(terreno->alturas[IXT(i,j)].y>0)
     {
-        sedimento_suspenso[IXT(i,j)] += ks*ds;
-        terreno->alturas[IXT(i,j)].y -= ks*ds;
-        //cout<<"Dissolve ds:"<<ds<<" ks:"<<ks<<" ks*ds:"<<ds*ks<<endl;
+        sedimento_suspenso[IXT(i,j)] += ks*ds*0.001;
+        terreno->alturas[IXT(i,j)].y -= ks*ds*0.001;
     }
 
     if(terreno->alturas[IXT(i,j)].y<0)
@@ -183,8 +206,8 @@ void Erosao::depositaSedimento(int i,int j, float ds){
 
     if(sedimento_suspenso[IXT(i,j)]>0)
     {
-        sedimento_suspenso[IXT(i,j)] -= kd*ds;
-        terreno->alturas[IXT(i,j)].y += kd*ds;
+        sedimento_suspenso[IXT(i,j)] -= kd*ds*0.001;
+        terreno->alturas[IXT(i,j)].y += kd*ds*0.001;
         //cout<<"Deposita ds:"<<ds<<" kd:"<<kd<<" kd*ds:"<<ds*kd<<endl;
     }
 
@@ -192,6 +215,7 @@ void Erosao::depositaSedimento(int i,int j, float ds){
     if(sedimento_suspenso[IXT(i,j)]<0)
         sedimento_suspenso[IXT(i,j)] = 0;
 }
+
 
 void Erosao::transportaSedimento(){
 
@@ -203,30 +227,22 @@ void Erosao::transportaSedimento(){
     for(int i=1; i<N-1; i++)
     for(int j=1; j<N-1; j++)
     {
-        ///x = float(i) - dt*agua->u[IXT(i,j)];
-        ///y = float(j) - dt*agua->v[IXT(i,j)];
+
+
+        //x = float(i) - dt*agua->u[IXT(i,j)];
+        //y = float(j) - dt*agua->v[IXT(i,j)];
+
         x = agua->alturaAgua[IXT(i,j)].x - dt0*agua->u[IXT(i,j)];
         y = agua->alturaAgua[IXT(i,j)].z - dt0*agua->v[IXT(i,j)];
-
-        //cout<<"P1:"<<x<<" "<<y<<endl;
-
-        /*i0 = (int)x;
-        j0 = (int)y;
-        i1 = i0+1;
-        j1 = j0+1;
-        */
-
-     //x = i-dt0*agua->u[IXT(i,j)]; y = j-dt0*agua->v[IXT(i,j)];
 
       if (x<-4.5f) x=-4.5f; if (x>4.5f) x=4.5f;
       if (y<-4.5f) y=-4.5f; if (y>4.5f) y=4.5f;
 
-        //cout<<"P2:"<<x<<" "<<y<<endl;
+      float n = N;
+      float gs = 10.0f/n;
 
-      float gs = 10.0f/float(N);
-
-      float x2 = x - -5;
-      float y2 = y - -5;
+      float x2 = x + 5;
+      float y2 = y + 5;
 
       i0 = int(x2/gs);
       i1 = i0+1;
@@ -234,24 +250,18 @@ void Erosao::transportaSedimento(){
       j0 = int(y2/gs);
       j1 = j0+1;
 
-      //x = x + -5;
-      //y = y + -5;
-
       s1 = (x2-i0*gs)/(gs); s0 = 1-s1; t1 = (y2-j0*gs)/(gs); t0 = 1-t1;
 
-      //i1+=N/2;
-      //i0+=N/2;
-      //j1+=N/2;
-      //j0+=N/2;
-
-      sedimento_suspenso[IXT(i,j)] = s0*(t0*sedimento_suspenso0[IXT(i0,j0)]+t1*sedimento_suspenso0[IXT(i0,j1)])+
-                s1*(t0*sedimento_suspenso0[IXT(i1,j0)]+t1*sedimento_suspenso0[IXT(i1,j1)]);
+      sedimento_suspenso[IXT(i,j)] = (s0*(t0*sedimento_suspenso0[IXT(i0,j0)]+t1*sedimento_suspenso0[IXT(i0,j1)])+
+                s1*(t0*sedimento_suspenso0[IXT(i1,j0)]+t1*sedimento_suspenso0[IXT(i1,j1)]));
+    //else
+    //sedimento_suspenso[IXT(i,j)] = 0;
         //if(t1>0)
             //cout<<"s0:"<<s0<<" s1:"<<s1<<" t0:"<<t0<<" t1:"<<t1<<" sed susp 0:"<<sedimento_suspenso0[IXT(i1,j0)]<<endl;
 
     }
 
-    for ( i=1 ; i<N-1; i++ ) {
+    for ( i=0 ; i<N; i++ ) {
       sedimento_suspenso[IXT(0  ,i)] = sedimento_suspenso[IXT(1,i)];
       sedimento_suspenso[IXT(N-1,i)] = sedimento_suspenso[IXT(N-2,i)];
       sedimento_suspenso[IXT(i,0  )] = sedimento_suspenso[IXT(i,1)];
@@ -296,16 +306,18 @@ void Erosao::thermalErosion(){
 
         for(int k=0; k<8; k++)
         {
-            float talus = tan(b[k]/sqrt(d*d + b[k]*b[k]));
+            float talus = b[k]/d;
 
-            if(b[k]>0 && tan(talus)>(ka + kt))
+            if(b[k]>0 && talus>1)//(b[k]/d))
             {
                 //cout<<"erodiu ("<<i<<","<<j<<")"<<endl;
-                newdS[k] = 500*dS*b[k]/sum;
+                newdS[k] = dS*b[k]/sum;
+                terreno->alturas[IXT(i,j)].y -=newdS[k];
             }else
                 newdS[k] = 0;
         }
 
+        //terreno->alturas[IXT(i,j)].y -= dS;
         terreno->alturas[IXT(i+1,j)].y+=newdS[0];
         terreno->alturas[IXT(i+1,j+1)].y+=newdS[1];
         terreno->alturas[IXT(i,j+1)].y+=newdS[2];
@@ -373,9 +385,7 @@ void Erosao::transportaSedimento2(){
 }
 
 void Erosao::guardaGradeSedimentoSuspenso(){
-    //for(int i=0; i<N; i++)
-    //for(int j=0; j<N; j++)
-
+    //for(int i=0; i<sedimento_suspenso0.size(); i++)
         sedimento_suspenso0 = sedimento_suspenso;
 
 }

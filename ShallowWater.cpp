@@ -17,6 +17,8 @@ ShallowWater::ShallowWater(int N, Terreno *terreno, float dt)
     alturaAgua = vector<Vetor>(N*N);
     alturaAguaVelha = vector<Vetor>(N*N);
     flow = vector<Flow>(N*N);
+    u = vector<float>(N*N);
+    v = vector<float>(N*N);
 
     Ix = 10.0/N;
     Iy = 10.0/N;
@@ -61,10 +63,10 @@ void ShallowWater::atualizaAlturas(int i, int j){
 }
 
 int ShallowWater::inicializaVelocidadeAgua(){
-   int size = (N)*(N);
+   //int size = (N)*(N);
 
-   u        = (float *) malloc ( size*sizeof(float) );
-   v        = (float *) malloc ( size*sizeof(float) );
+   //u        = (float *) malloc ( size*sizeof(float) );
+   //v        = (float *) malloc ( size*sizeof(float) );
 
    for(int i=0; i<N; i++)
    for(int j=0; j<N; j++)
@@ -80,8 +82,8 @@ int ShallowWater::inicializaVelocidadeAgua(){
 
 void ShallowWater::free_data ( void )
 {
-   if ( u ) free ( u );
-   if ( v ) free ( v );
+//   if ( u ) free ( u );
+ //  if ( v ) free ( v );
 }
 
 
@@ -139,7 +141,7 @@ void ShallowWater::fixedFont(int i, int j, float r)
 
 void ShallowWater::waterEvaporation(){
 
-    float ke = 0.015;
+    float ke = 0.15;
 
     for(int i=0; i<N; i++)
     for(int j=0; j<N; j++)
@@ -234,10 +236,15 @@ void ShallowWater::newVolume(int i,int j){
 
     float dV = dt*(inflow - outflow);
 
+    float alturaVelha = alturaAgua[IX(i,j)].y;
     alturaAgua[IX(i,j)].y += dV/(Ix*Iy);
+    float alturaNova = alturaAgua[IX(i,j)].y;
+    float d = 0.5f*(alturaNova + alturaVelha);
 
-    u[IX(i,j)] = 0.5*(flow[IX(i-1,j)].R - flow[IX(i,j)].L + flow[IX(i,j)].R - flow[IX(i+1,j)].L);
-    v[IX(i,j)] = 0.5*(flow[IX(i,j-1)].T - flow[IX(i,j)].B + flow[IX(i,j)].T - flow[IX(i,j+1)].B);
+    if(d==0)d=1;
+
+    u[IX(i,j)] = 0.5*(flow[IX(i-1,j)].R - flow[IX(i,j)].L + flow[IX(i,j)].R - flow[IX(i+1,j)].L)/(d*Iy);
+    v[IX(i,j)] = 0.5*(flow[IX(i,j-1)].T - flow[IX(i,j)].B + flow[IX(i,j)].T - flow[IX(i,j+1)].B)/(d*Ix);
 }
 
 void ShallowWater::trataBordas(){
@@ -248,6 +255,16 @@ void ShallowWater::trataBordas(){
         alturaAgua[IX(i,N-1)].y = alturaAgua[IX(i,N-2)].y;
         alturaAgua[IX(0,i)].y = alturaAgua[IX(1,i)].y;
         alturaAgua[IX(N-1,i)].y = alturaAgua[IX(N-2,i)].y;
+    }
+
+
+    for(int i=0; i<alturaAgua.size(); i++)
+    {
+        if(alturaAgua[i].y < 0)
+           alturaAgua[i].y = 0;
+
+        if(alturaAgua[i].y > 20)
+           alturaAgua[i].y = 20;
     }
 
     alturaAgua[IX(0,0)].y = 0;
@@ -272,6 +289,7 @@ void ShallowWater::shallowWaterStep()
     {
         outflowFlux(i,j);
         newVolume(i,j);
+
     }/**/
     trataBordas();
 

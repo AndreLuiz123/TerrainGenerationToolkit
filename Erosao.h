@@ -16,6 +16,7 @@ public:
     float ks;
     float kt;
     float ka;
+    int it=0;
     //Terreno *terreno;
     ShallowWater *agua;
     Terreno *terreno;
@@ -28,7 +29,8 @@ public:
     Erosao(int N, Terreno *terreno, ShallowWater *agua, float kc, float kd, float ks);
 
     void inicializaSedimentoSuspenso();
-    void roda_erosao();
+    void roda_erosao(bool evapo);
+    void roda_erosao_hidraulica(bool evapo);
     void roda_erosao_termica();
     void deposita_dissolve();
     void dissolveSedimento(int i,int j,float ds);

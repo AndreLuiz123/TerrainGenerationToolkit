@@ -32,6 +32,12 @@ public:
 
     void hillAlgorithm(int numberHills);
     void faulting(int iterations);
+    void valueNoise(vector<float> &values, unsigned seed=2001);
+    void valueNoise2d(vector<float> &values, unsigned seed=2001);
+    float coslerp(float a,float b,float alpha);
+    float lerp(float a,float b,float alpha);
+    float noise(vector<float> &values, float t);
+    float noise2d(vector<float> &values, float tx, float ty);
     void perlinNoise();
     void diamond(int iterations);
     void diamond_squareStep(int chunk, float dHeight, float r);
@@ -43,6 +49,12 @@ public:
     void normalizeHeight(float maxH, float minH);
     float findMaxValue(bool maxOrMin);
     void salvarTerreno();
+    void cubo();
+    void zeraTerreno();
+    void terrenoTeste();
+    void variosCubos();
+    void cubosUnidos();
+    void terrenao();
     ~Terreno();
 
 };

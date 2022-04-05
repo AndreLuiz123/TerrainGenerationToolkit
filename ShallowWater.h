@@ -23,9 +23,9 @@ public:
     vector<Vetor> alturaAguaVelha;
     vector<Flow> flow;
     Terreno *terreno;
-    float dt=0.1;
+    float dt=185.1f;
     float Ix, Iy;
-    float * u, * v;
+    vector<float> u, v;
     float kr = 1;
 
     ShallowWater(int N, Terreno *terreno, float dt);
